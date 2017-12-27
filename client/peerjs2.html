@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+
+<html>
+<head>
+    <meta charset="utf-8"/>
+    <title>simplest rtcninja demo</title>
+    <script src="js/rtcninja.min.js"></script>
+    <!-- <script src="js/peer.min.js"></script> -->
+    <script src="http://cdn.peerjs.com/0.3/peer.js"></script>
+    <script src="/socket.io/socket.io.js"></script>
+    <style>
+        #localVideo {
+            width: 30em;
+            height: 30em;
+            background-color: #eaeaea;
+        }
+        #remoteVideo {
+            width: 30em;
+            height: 30em;
+            background-color: #eaeaea;
+        }
+    </style>
+</head>
+
+<body>
+    <video id="localVideo2" muted autoplay></video>
+    <video id="remoteVideo2" muted autoplay></video>
+
+    <script>
+        window.onload = function(event) {
+            peer2 = new Peer('grossinggames2', { key: 'jagpc22a2z6ko6r'});
+
+            peer2.on('open', function(id) {
+                console.log('open id: ', id);
+                console.log('[' + id + ']');
+            });
+
+            peer2.on('connection', function(connection) {
+                console.log('connection ', connection);
+
+                connection.on('open', function() {
+                    connection.send('Hello,');
+                });
+
+                connection.on('data', function(data) {
+                    console.log(data);
+                });
+
+                connection.send('Hello!');
+                setInterval(function() {
+                    connection.send('Hello! peer2');
+                }, 1000);
+            });
+
+        }
+    </script>
+</body>
+
+</html>

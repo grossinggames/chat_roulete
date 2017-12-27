@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+
+<html>
+<head>
+    <meta charset="utf-8"/>
+    <title>simplest rtcninja demo</title>
+    <script src="js/rtcninja.min.js"></script>
+    <script src="/socket.io/socket.io.js"></script>
+
+    <style>
+        #localVideo {
+            width: 30em;
+            height: 30em;
+            background-color: #eaeaea;
+        }
+        #localVideo2 {
+            width: 30em;
+            height: 30em;
+            background-color: #eaeaea;
+        }
+        #remoteVideo {
+            width: 30em;
+            height: 30em;
+            background-color: #eaeaea;
+        }
+        #remoteVideo2 {
+            width: 30em;
+            height: 30em;
+            background-color: #eaeaea;
+        }
+    </style>
+</head>
+
+<body>
+    <video id="localVideo2" muted autoplay></video>
+    <video id="remoteVideo2" muted autoplay></video>
+
+    <script>
+        window.onload = function(event) {
+            // ************************* Проверка наличия WebRTC *************************
+            var socket = io();
+            socket.on('message', function(msg) {
+                if (!msg) return false;
+
+                // msg = JSON.parse(msg);
+
+                console.log('\r\n Socket: ', msg.type, ': ', msg);
+
+                if ('type' in msg) {
+                    switch(msg.type) {
+                        case 'offer':
+                            setRemoteDescriptionUser2(msg);
+                            break;
+                    }
+                }
+            });
+            
+            // ************************* Проверка наличия WebRTC *************************
+            rtcninja();
+
+            if (!rtcninja.hasWebRTC()) {
+                console.log('WebRTC is not supported');
+                return;
+            }
+            console.log('Supports WebRTC');
+
+            // ************************* getUserMedia *************************
+            var streamConstraints = {
+                "audio": false,
+                "video": {
+                    "mandatory": {
+                        "maxWidth": "84",
+                        "maxHeight": "100",
+                        "maxFrameRate": "24"
+                    },
+                    "optional": []
+                }
+            };
+            var localStream;
+            var timer;
+
+            rtcninja.getUserMedia(streamConstraints, getUserMediaSuccess, getUserMediaError);
+
+            function getUserMediaSuccess(stream) {
+                // console.log('getUserMediaSuccess stream: ', stream);
+
+                if (stream) {
+                    localStream = stream;
+                } else {
+                    return 'Не обнаружен локальный стрим';
+                }
+
+            
+                // var video = document.getElementById('localVideo');
+                // video.src = window.URL.createObjectURL(localStream);
+                
+                var video2 = document.getElementById('localVideo2'); // Переместить добавление видео 2 абонента
+                video2.src = window.URL.createObjectURL(localStream);  // Переместить добавление видео 2 абонента
+
+                // Video element ready.
+                // video.onloadedmetadata = function(e) {
+                    // console.log('Video Onloadedmetadata event: ', e);
+                    // createOffer();
+                // }
+            }
+
+            function getUserMediaError(err) {
+                console.error('getUserMedia() failed: %s', err.toString());
+            }
+
+            // ************************* Получить createOffer *************************
+            var peerConnection;
+            var servers = [];
+
+            function createOffer() {
+                // console.log('createOffer');
+
+                if (!localStream) {
+                    return console.log('Not localStream');
+                }
+
+                peerConnection = new rtcninja.RTCPeerConnection(servers); // Создаем RTCPeerConnection
+                peerConnection.onicecandidate = onIceCandidate; // Callback-функция для обработки ICE-кандидатов
+                peerConnection.onaddstream = onAddStream; // Callback-функция, вызываемая при появлении медиапотока от дальней стороны. Пока что его нет
+                peerConnection.addStream(localStream); // Передадим локальный медиапоток (предполагаем, что он уже получен)
+
+                peerConnection2.addStream(localStream); // ПЕРЕМЕСТИТЬ Стрим 2 пользователя
+
+                peerConnection.createOffer(createOfferSuccess, createOfferError);
+            }
+
+            var offer;
+
+            function createOfferSuccess(localOffer) {
+                // console.log('createOfferSuccess offer:', localOffer);
+                offer = localOffer;
+                peerConnection.setLocalDescription(localOffer);
+                // pc2_receivedOffer(localOffer);
+                // socket.emit('message', localOffer);
+            }
+
+            function createOfferError(err) {
+                console.log('createOfferError err: ', err);
+            }
+
+            function onAddStream(event) {
+                var remoteVideo = document.getElementById('remoteVideo');
+                remoteVideo.src = URL.createObjectURL(event.stream);
+                // console.log('onAddStream Remote Stream : ', event);
+            }
+
+            // ************************* Получить IceCandidates *************************
+            var iceCandidates = [];
+
+            function onIceCandidate(iceCandidate) {
+                console.log('onIceCandidate');
+                clearTimeout(timer);
+
+                if (iceCandidate.candidate) {
+                    // console.log('ICE candidate received: ' + (iceCandidate.candidate.candidate == null ? null : iceCandidate.candidate.candidate.trim()));
+
+                    iceCandidate = iceCandidate || [];
+                    iceCandidates.push(iceCandidate);
+                    startIceCheckingTimer();
+                } else {
+                    console.log('onIceCandidate resolve');
+                    onIceCandidateComplete();
+                }
+            }
+            
+            function startIceCheckingTimer() {
+                // console.log('startIceCheckingTimer');
+
+                clearTimeout(timer);
+
+                timer = setTimeout(function() {
+                    console.log('timer onIceCandidateComplete');
+                    onIceCandidateComplete();
+                }, 5000);
+            }
+
+            function onIceCandidateComplete() {
+                // console.log('onIceCandidateComplete');
+                clearTimeout(timer);
+
+                // console.log('onIceCandidateComplete iceCandidates: ', iceCandidates);
+                offer = getOffer();
+                // console.log('offer: ', offer);
+
+                socket.send(offer);
+                // setRemoteDescriptionUser2(offer); /////// Удалить
+            }
+
+            // ************************* Формирование createOffer и IceCandidates *************************
+            function getOffer() {
+                var result = {};
+
+                var sdpIceCandidate = [];
+
+                iceCandidates.forEach(function(item) {
+                    if (item && item['candidate'] && item['candidate']['candidate']) {
+                        sdpIceCandidate.push({
+                            candidate: item['candidate']
+                        });
+                    } else {
+                        sdpIceCandidate.push(item);
+                    }
+                });
+                result['icecandidates'] = sdpIceCandidate;
+
+                // Создание клона объекта sdp из за некорректной сериализации объекта sdp
+                var cloneResult = {
+                    'sdp': offer['sdp'],
+                    'icecandidates': result['icecandidates'],
+                    'type': offer['type']
+                }
+
+                return cloneResult;
+            }
+
+            // ************************* Установить answer на offer *************************
+            function setRemoteDescriptionUser(answer) {
+                try {
+                    // answer = JSON.parse(answer);
+                } catch(err) {
+                    return console.error('Set answer JSON.parse error: ', err);
+                }
+
+                function setRemoteDescriptionSuccess() {
+                    // console.log('setRemoteDescription: ', answer);
+                    setIceCandidate(answer);
+                }
+
+                function handleError(error) {
+                    console.error('setanswer handleError: ', error);
+                    throw error;
+                }
+
+                peerConnection.setRemoteDescription(
+                    new rtcninja.RTCSessionDescription(answer),
+                    setRemoteDescriptionSuccess,
+                    handleError
+                );
+            }
+
+            // ************************* Установить удаленный IceCandidate *************************
+            function setIceCandidate(remoteAnswer) {
+                // console.log('setremoteAnswer icecandidates: ', remoteAnswer.icecandidates);
+
+                if ( (remoteAnswer.icecandidates)
+                    && Array.isArray(remoteAnswer.icecandidates) ) {
+
+                    var iceCandidates = remoteAnswer.icecandidates;
+
+                    iceCandidates.forEach((item) => {
+                        if (item.candidate) {
+                            // console.log('setremoteAnswer set icecandidates: ', item.candidate);
+                            // peerConnection.addIceCandidate(item.candidate);
+                            peerConnection.addIceCandidate( new rtcninja.RTCIceCandidate(item.candidate) );
+                        }
+                    });
+                }
+            };
+
+
+
+
+            // ************************* Второй пользователь *************************
+            var servers2 = [];
+            var remoteSdp;
+
+            var peerConnection2 = new rtcninja.RTCPeerConnection(servers2); // Создаем RTCPeerConnection
+            peerConnection2.onicecandidate = onIceCandidate2; // Задаем обработчик события при появлении ICE-кандидата
+            peerConnection2.onaddstream = onAddStream2; // При появлении потока подключим его к HTML <video>
+            peerConnection2.onicegatheringstatechange = (e) => {
+                console.log('RTCIceGatheringState changed: ' + peerConnection2.iceGatheringState);
+
+                if (peerConnection2.iceGatheringState === 'gathering') {
+                    // self.emit('iceGathering', peerConnection2);
+                }
+                if (peerConnection2.iceGatheringState === 'complete') {
+                    // self.onIceCompleted.resolve(peerConnection2);
+                }
+            };
+            // ************************* Получить IceCandidates2 *************************
+            var iceCandidates2 = [];
+            var timer2;
+            var offer2;
+
+            function onIceCandidateComplete2() {
+                // console.log('onIceCandidateComplete');
+                clearTimeout(timer2);
+
+                // console.log('onIceCandidateComplete iceCandidates: ', iceCandidates);
+                offer2 = getOffer2();
+                console.log('offer2: ', offer2);
+                //setRemoteDescriptionUser(offer2);
+                socket.send(offer2);
+            }
+
+            function onIceCandidate2(iceCandidate) {
+                console.log('onIceCandidate2 ', iceCandidate);
+
+                clearTimeout(timer2);
+
+                // console.log(iceCandidate.candidate);
+
+                if (iceCandidate.candidate) {
+                    // console.log('ICE candidate received: ' + (iceCandidate.candidate.candidate == null ? null : iceCandidate.candidate.candidate.trim()));
+
+                    iceCandidate = iceCandidate || [];
+                    iceCandidates2.push(iceCandidate);
+                    startIceCheckingTimer2();
+                } else {
+                    console.log('onIceCandidate resolve');
+                    onIceCandidateComplete2();
+                }
+            }
+
+            function startIceCheckingTimer2() {
+                // console.log('startIceCheckingTimer');
+
+                clearTimeout(timer2);
+
+                timer2 = setTimeout(function() {
+                    console.log('timer onIceCandidateComplete2');
+                    onIceCandidateComplete2();
+                }, 5000);
+            }
+
+            // ************************* На появление стрима стороннего кандидита *************************
+            function onAddStream2(event) {
+                // console.log('onAddStream2 remoteStream : ', event);
+                var remoteVideo2 = document.getElementById('remoteVideo2');
+                remoteVideo2.src = URL.createObjectURL(event.stream);
+            }
+
+            // ************************* Сформировать ответ от абонента 2 *************************
+            var answerConstraints = {
+                'mandatory': {
+                    'OfferToReceiveAudio': true,
+                    'OfferToReceiveVideo': true
+                }
+            };
+
+            function peerConnection2CreateAnswerSuccess(answer) {
+                peerConnection2.setLocalDescription(answer);
+                offer2 = answer;
+                // console.log('pc2_createAnswer_success: ', answer);
+
+                //pc1.setRemoteDescription(desc);
+            }
+
+            function peerConnection2CreateAnswerError(error) {
+                console.log('pc2_createAnswer_error():', error);
+            }
+
+            function createAnswer2() {
+                // Запросим у второго соединения формирование данных для сообщения Answer
+                peerConnection2.createAnswer(
+                    peerConnection2CreateAnswerSuccess,
+                    peerConnection2CreateAnswerError,
+                    answerConstraints
+                );
+            }
+
+            // ************************* Установить удаленный IceCandidate *************************
+            function setIceCandidate2() {
+                console.log('setIceCandidate2 icecandidates: ', remoteSdp.icecandidates);
+
+                if ( (remoteSdp.icecandidates)
+                    && Array.isArray(remoteSdp.icecandidates) ) {
+
+                    var iceCandidates = remoteSdp.icecandidates;
+
+                    iceCandidates.forEach((item) => {
+                        if (item.candidate) {
+                            // console.log('setremoteSdp set icecandidates: ', item.candidate);
+                            // peerConnection2.addIceCandidate(item.candidate);
+                            peerConnection2.addIceCandidate( new rtcninja.RTCIceCandidate(item.candidate) );
+                        }
+                    });
+                }
+
+                // process.send('setIceCandidate');
+
+                listenDataChannel2();
+                createAnswer2();
+            };
+
+            // ************************* Установить удаленный Offer *************************
+            function listenDataChannel2() {
+                peerConnection2.ondatachannel = function (event) {
+                    peerConnection2.dataChannel = event.channel;
+
+                    peerConnection2.dataChannel.onopen = () => {
+                        // console.log('peerConnection2 open');
+
+                        peerConnection2.channelOpen = 1;
+
+                        peerConnection2.dataChannel.onmessage = (event) => {
+                            var data = event.data;
+                            // console.log('peerConnection2 message: ', data);
+                        }
+                        peerConnection2.dataChannel.onclose = () => {
+                            peerConnection2.channelOpen = 0;
+                            // console.log('peerConnection2 close dataChannel');
+                        }
+                    }
+                }
+            }
+
+            // ************************* Установить удаленный Offer *************************
+            function setRemoteDescriptionUser2(remoteOffer) {
+                remoteSdp = remoteOffer;
+                console.log('setRemoteDescriptionUser2 start');
+                // console.log('setRemoteDescriptionUser2: ', remoteSdp);
+
+                try {
+                    // remoteSdp = JSON.parse(remoteSdp);
+                } catch(err) {
+                    return console.error('rtc.js setremoteSdp JSON.parse error: ', err);
+                }
+
+                function setRemoteDescriptionSuccess2(e) {
+                    console.log('setRemoteDescriptionSuccess2: ', e);
+                    // peerConnection2.setLocalDescription(localOffer);
+                    setTimeout(function () {
+                        setIceCandidate2();
+                    }, 5000);
+                }
+
+                function handleError2(error) {
+                    console.error('setremoteSdp handleError: ', error);
+                    throw error;
+                }
+
+                console.log(remoteSdp);
+
+                // var tmp = new rtcninja.RTCSessionDescription();
+                // tmp.type = "offer";
+                // tmp.sdp = remoteSdp.sdp;
+                // console.log('tmp: ', tmp);
+
+
+                peerConnection2.setRemoteDescription(
+                    new rtcninja.RTCSessionDescription(remoteSdp),
+                    // tmp,
+                    setRemoteDescriptionSuccess2,
+                    handleError2
+                );
+            }
+
+
+            // ************************* Формирование createOffer и IceCandidates *************************
+            function getOffer2() {
+                var result = {};
+
+                var sdpIceCandidate = [];
+
+                iceCandidates2.forEach(function(item) {
+                    if (item && item['candidate'] && item['candidate']['candidate']) {
+                        sdpIceCandidate.push({
+                            candidate: item['candidate']
+                        });
+                    } else {
+                        sdpIceCandidate.push(item);
+                    }
+                });
+                result['icecandidates'] = sdpIceCandidate;
+
+                /*
+                // Создание клона объекта sdp из за некорректной сериализации объекта sdp
+                var cloneResult = {
+                    'sdp': offer2['sdp'],
+                    'icecandidates': result['icecandidates'],
+                    'type': offer2['type']
+                }
+
+                return JSON.stringify(cloneResult);
+                */
+
+                //Создание клона объекта sdp из за некорректной сериализации объекта sdp
+                var cloneSdp = {
+                    'sdp': offer2['sdp'],
+                    'icecandidates': result['icecandidates'],
+                    'type': offer2['type']
+                }
+
+                // var answerSdp = JSON.stringify(cloneSdp);
+                return cloneSdp;
+            }
+
+            // *************************  *************************
+            // *************************  *************************
+            // *************************  *************************
+        }
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+
+<html>
+<head>
+    <meta charset="utf-8"/>
+    <title>simplest rtcninja demo</title>
+    <script src="js/sip-0.7.6.js"></script>
+    <style>
+        #localVideo {
+            width: 30em;
+            height: 30em;
+            background-color: #eaeaea;
+        }
+        #remoteVideo {
+            width: 30em;
+            height: 30em;
+            background-color: #eaeaea;
+        }
+    </style>
+</head>
+
+<body>
+    <video id="localVideo2" muted autoplay></video>
+    <video id="remoteVideo2" muted autoplay></video>
+
+    <script>
+        window.onload = function() {
+            // Тестовый звонок на марс для отладки rtc канала на Марсе
+            // ********************** 1 **************************
+            let ua1 = new SIP.UA({
+                uri: 'sip:1@' + '127.0.0.1',
+                user: '1',
+                password: '1',
+                wsServers: ['ws://' + '127.0.0.1' + ':5060'],
+                register: true,
+                mediaHandlerFactory: SIP.WebRTC.MediaHandler.defaultFactory,
+                registerExpires: 120,
+                transport: 'ws'
+            });
+
+            setTimeout(() => {
+                // ****** Исходящий звонок ****** //
+                const EventEmitter = require('events');
+                const stream = new EventEmitter();
+
+                let options = {
+                    media: {
+                        stream: stream
+                    }
+                };
+
+                let session = ua1.invite('sip:alice@' + hostIp, options);
+
+                // ****** Воспроизведение входящего потока ****** //
+                var remoteStream = session.getRemoteStreams();
+
+                var remoteBuffers;
+
+                remoteStream.on('data', (data) => {
+                    data = new Buffer( convertoUlawToPcmu(data) );
+
+                    if (remoteBuffers) {
+                        var totalLength = remoteBuffers.length + data.length;
+                        remoteBuffers = Buffer.concat([remoteBuffers, data], totalLength);
+
+                        if (totalLength > 500) {
+                            remoteBuffers = null;
+                        }
+                    } else {
+                        remoteBuffers = data;
+                    }
+
+                });
+
+                var rightResult = '4567';
+                var resultInput = '';
+
+                ua1.on('message', (message) => {
+                    if (message.body) {
+                        resultInput += message.body;
+
+                        if (resultInput == rightResult) {
+                            session.bye();
+
+                            setTimeout(() => {
+                                // console.log('bye');
+                                done();
+                            }, 3000);
+                        } else {
+                            if (resultInput.length >= rightResult.length) {
+                                // done('Введенные показания не соответствуют ' + resultInput + ' != ' + rightResult);
+                            }
+                        }
+                    }
+                });
+
+                setTimeout(() => {
+                    let player = new player_1.Player();
+
+                    player.on('buffer', (data) => {
+                        var newData = new Buffer(data.length - 12);
+                        data.copy(newData, 0, 12);
+
+                        newData = new Buffer( convertoUlawToPcmu(newData) );
+
+                        let rtcBuffer = new Buffer(newData.length);
+                        newData.copy(rtcBuffer);
+
+                        stream.emit('data', newData);
+                    });
+
+                    player.emit('start_play', {
+                        params: {
+                            file: file
+                        }
+                    });
+
+                    player.on('event', (data) => {
+                        // console.log('event data: ', data);
+                    });
+                }, 1000);
+            });
+        }
+    </script>
+</body>
+
+</html>
