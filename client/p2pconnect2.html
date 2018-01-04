@@ -425,9 +425,7 @@
                 function setRemoteDescriptionSuccess2(e) {
                     console.log('setRemoteDescriptionSuccess2: ', e);
                     // peerConnection2.setLocalDescription(localOffer);
-                    setTimeout(function () {
-                        setIceCandidate2();
-                    }, 5000);
+                    setIceCandidate2();
                 }
 
                 function handleError2(error) {

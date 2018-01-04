@@ -5,7 +5,7 @@
     <meta charset="utf-8"/>
     <title>simplest rtcninja demo</title>
     <script src="js/rtcninja.min.js"></script>
-    <script src="js/peer.min.js"></script>
+    <script src="js/peer.js"></script>
     <!-- <script src="http://cdn.peerjs.com/0.3/peer.js"></script> -->
     <script src="/socket.io/socket.io.js"></script>
     <style>
@@ -28,26 +28,36 @@
 
     <script>
         window.onload = function(event) {
-            peer = new Peer('grossinggames2', { key: 'jagpc22a2z6ko6r'});
+            peer = new Peer('grossinggames2', {host: 'localhost', port: 9000, path: '/'});
 
-            navigator.getUserMedia = navigator.getUserMedia || navigator.webkitGetUserMedia || navigator.mozGetUserMedia;
+            peer.on('open', function() {
+                navigator.getUserMedia = navigator.getUserMedia || navigator.webkitGetUserMedia || navigator.mozGetUserMedia;
 
-            navigator.getUserMedia({video: true, audio: false}, function(stream) {
-                var video = document.getElementById('localVideo2');
-                video.src = window.URL.createObjectURL(stream);
+                navigator.getUserMedia({video: true, audio: false}, function(stream) {
+                    var video = document.getElementById('localVideo2');
+                    video.src = window.URL.createObjectURL(stream);
 
-                var call = peer.call('grossinggames1', stream);
-                
-                call.on('stream', function(remoteStream) {
-                    console.log('!!!!!!!!!!!!remoteStream');
+                    var call = peer.call('grossinggames1', stream);
+                    call.on('stream', function(remoteStream) {
+                        var video = document.getElementById('remoteVideo2');
+                        video.src = window.URL.createObjectURL(remoteStream);
 
-                    var video = document.getElementById('remoteVideo2');
-                    video.src = window.URL.createObjectURL(remoteStream);
+                        // Show stream in some <video> element.
 
-                    // Show stream in some <video> element.
+                        var conn = peer.connect('grossinggames1');
+                        conn.on('open', function() {
+                            console.log('OPEN!');
+                            conn.send('hi!');
+
+                            conn.on('data', function(data){
+                                conn.send('!!!!!!!!!');
+                                console.log(data);
+                            });
+                        });
+                    });
+                }, function(err) {
+                    console.log('Failed to get local stream' ,err);
                 });
-            }, function(err) {
-                console.log('Failed to get local stream' ,err);
             });
         }
     </script>

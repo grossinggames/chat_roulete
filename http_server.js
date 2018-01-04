@@ -5,11 +5,11 @@ var fs = require('fs');
 
 
 /* *************** Создание http/https сервера *************** */
-var httpServer = express.createServer(//{
-//     key: fs.readFileSync(__dirname + '/certificate/server_localhost.key'),
-//     cert: fs.readFileSync(__dirname + '/certificate/server_localhost.crt')
-// });
-);
+var httpServer = express.createServer({
+    key: fs.readFileSync(__dirname + '/certificate/server_localhost.key'),
+    cert: fs.readFileSync(__dirname + '/certificate/server_localhost.crt')
+});
+// );
 
 httpServer.use(express.static("client"));
 

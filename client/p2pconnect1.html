@@ -226,9 +226,7 @@
 
                 function setRemoteDescriptionSuccess() {
                     console.log('setRemoteDescription: ', answer);
-                    setTimeout(function () {
-                        setIceCandidate(answer);
-                    }, 5000);
+                    setIceCandidate(answer);
                 }
 
                 function handleError(error) {
