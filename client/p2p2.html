@@ -320,7 +320,7 @@
             var offer2;
 
             function onIceCandidateComplete2() {
-                //console.log('onIceCandidateComplete');
+                console.log('onIceCandidateComplete');
                 clearTimeout(timer2);
 
                 // console.log('onIceCandidateComplete iceCandidates: ', iceCandidates);
@@ -357,7 +357,7 @@
                 timer2 = setTimeout(function() {
                     console.log('timer onIceCandidateComplete2');
                     onIceCandidateComplete2();
-                }, 5000);
+                }, 15000);
             }
 
             // ************************* На появление стрима стороннего кандидита *************************
@@ -376,7 +376,7 @@
             };
 
             function peerConnection2CreateAnswerSuccess(answer) {
-                peerConnection2.setLocalDescription(answer);
+                peerConnection2.setLocalDescription( new rtcninja.RTCSessionDescription(answer) );
                 offer2 = answer;
                 console.log('pc2_createAnswer_success: ', answer);
                 
@@ -408,7 +408,8 @@
                     iceCandidates.forEach((item) => {
                         if (item.candidate) {
                             console.log('setremoteSdp set icecandidates: ', item);
-                            peerConnection2.addIceCandidate( new rtcninja.RTCIceCandidate(item) );
+                            // peerConnection2.addIceCandidate( new rtcninja.RTCIceCandidate(item) );
+                            peerConnection2.addIceCandidate( new rtcninja.RTCIceCandidate(item.candidate) );
                         }
                     });
                 }
@@ -426,11 +427,11 @@
 
                     peerConnection2.dataChannel.onopen = () => {
                         console.log('peerConnection2 open');
-                        peerConnection2.dataChannel.send('!!!!!!!!!!!!!!!!!!!!!!!!!');
+                        // peerConnection2.dataChannel.send('!!!!!!!!!!!!!!!!!!!!!!!!!');
                         peerConnection2.channelOpen = 1;
 
                         peerConnection2.dataChannel.onmessage = (event) => {
-                            peerConnection2.dataChannel.send('!!!!!!!!!!!!!!!!!!!!!!!!!');
+                            // peerConnection2.dataChannel.send('!!!!!!!!!!!!!!!!!!!!!!!!!');
                             var data = event.data;
                             console.log('peerConnection2 message: ', data);
                         }

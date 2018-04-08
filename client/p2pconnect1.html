@@ -123,6 +123,7 @@
                 };
                 peerConnection.addStream(localStream); // Передадим локальный медиапоток (предполагаем, что он уже получен)
 
+                peerConnection.createDataChannel('channel');
                 peerConnection.createOffer(createOfferSuccess, createOfferError);
             }
 
@@ -150,7 +151,7 @@
             var iceCandidates = [];
 
             function onIceCandidate(iceCandidate) {
-                console.log('onIceCandidate');
+                console.log('onIceCandidate: ', iceCandidate);
                 clearTimeout(timer);
 
                 if (iceCandidate.candidate) {

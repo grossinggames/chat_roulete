@@ -86,7 +86,7 @@
             rtcninja.getUserMedia(streamConstraints, getUserMediaSuccess, getUserMediaError);
 
             function getUserMediaSuccess(stream) {
-                // console.log('getUserMediaSuccess stream: ', stream);
+                console.log('getUserMediaSuccess stream: ', stream);
 
                 if (stream) {
                     localStream = stream;
@@ -103,7 +103,7 @@
 
                 // Video element ready.
                 video.onloadedmetadata = function(e) {
-                    // console.log('Video Onloadedmetadata event: ', e);
+                    console.log('Video Onloadedmetadata event: ', e);
                     // createOffer();
 
                     var btnCreateOffer = document.getElementById('create_offer');
@@ -156,7 +156,7 @@
             ];
 
             function createOffer() {
-                // console.log('createOffer');
+                console.log('createOffer');
 
                 if (!localStream) {
                     return console.log('Not localStream');
@@ -168,16 +168,15 @@
                 peerConnection.addStream(localStream); // Передадим локальный медиапоток (предполагаем, что он уже получен)
 
                 // peerConnection2.addStream(localStream); // ПЕРЕМЕСТИТЬ Стрим 2 пользователя
-
+                // peerConnection.createDataChannel('channel');
                 peerConnection.createOffer(createOfferSuccess, createOfferError);
-
 
                 var dataChannel = peerConnection.createDataChannel('text');
 
                 // На исходящий звонок!
                 dataChannel.onopen = () => {
                     console.log('OPEN Data channel');
-                    dataChannel.send('!!!!!!!!!!!!!!!!!!!!!!!!!');
+                    // dataChannel.send('!!!!!!33333!!!!!!!!!!!!!!!!!!!');
                     
                     dataChannel.onmessage = (event) => {
                         console.log('message: ', event.data);
@@ -189,9 +188,9 @@
             var offer;
 
             function createOfferSuccess(localOffer) {
-                // console.log('createOfferSuccess offer:', localOffer);
+                console.log('createOfferSuccess offer:', localOffer);
                 offer = localOffer;
-                peerConnection.setLocalDescription(localOffer);
+                peerConnection.setLocalDescription( new rtcninja.RTCSessionDescription(localOffer) );
                 // pc2_receivedOffer(localOffer);
                 // socket.emit('message', JSON.stringify(localOffer));
             }
@@ -211,7 +210,7 @@
             var iceCandidates = [];
 
             function onIceCandidate(iceCandidate) {
-                // console.log('onIceCandidate');
+                console.log('onIceCandidate ', iceCandidate);
                 clearTimeout(timer);
 
                 if (iceCandidate.candidate) {
@@ -279,7 +278,7 @@
             // ************************* Установить answer на offer *************************
             function setRemoteDescriptionUser(answer) {
                 function setRemoteDescriptionSuccess() {
-                    // console.log('setRemoteDescription: ', answer);
+                    console.log('setRemoteDescription: ', answer);
                     setIceCandidate(answer);
                 }
 
@@ -298,6 +297,7 @@
 
                 peerConnection.setRemoteDescription(
                     new rtcninja.RTCSessionDescription(answer),
+                    // new rtcninja.RTCSessionDescription(rawDescription),
                     setRemoteDescriptionSuccess,
                     handleError
                 );
@@ -318,6 +318,7 @@
                         if (item.candidate) {
                             // console.log('setremoteAnswer set icecandidates: ', item.candidate);
                             peerConnection.addIceCandidate( new rtcninja.RTCIceCandidate(item.candidate) );
+                            // peerConnection.addIceCandidate( new rtcninja.RTCIceCandidate(item) );
                         }
                     });
                 }

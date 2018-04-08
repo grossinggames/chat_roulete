@@ -3,11 +3,11 @@
 <html>
 <head>
     <meta charset="utf-8"/>
-    <title>simplest rtcninja demo</title>
-    <script src="js/rtcninja.min.js"></script>
+    <!-- <title>simplest rtcninja demo</title> -->
+    <!-- <script src="js/rtcninja.min.js"></script> -->
     <script src="js/peer.js"></script>
     <!-- <script src="http://cdn.peerjs.com/0.3/peer.js"></script> -->
-    <script src="/socket.io/socket.io.js"></script>
+    <!-- <script src="/socket.io/socket.io.js"></script> -->
     <style>
         #localVideo {
             width: 30em;
@@ -52,7 +52,7 @@
                 peer.on('connection', function(conn) {
                     conn.on('data', function(data){
                         // Will print 'hi!'
-                        conn.send('!!!!!!!!!');
+                        // conn.send('!!!!!!!!!');
                         console.log(data);
                     });
                 });
